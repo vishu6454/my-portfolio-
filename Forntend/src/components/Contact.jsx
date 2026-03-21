@@ -495,7 +495,7 @@ export default function Contact() {
                     exit={{ opacity: 0, y: -10 }}
                     className="mb-5 p-3 rounded-xl bg-red-500/10 border border-red-500/50 text-red-500 text-sm flex items-center gap-2"
                   >
-                    <FaShieldAlt className="text-sm flex-shrink-0" />
+                    <FaShieldAlt className="text-sm shrink-0" />
                     <span>{error}</span>
                   </motion.div>
                 )}
