@@ -1,59 +1,73 @@
-const express = require("express");
-const cors = require("cors");
-const { Resend } = require("resend");
-require("dotenv").config();
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import dotenv from 'dotenv';
+import rateLimit from 'express-rate-limit';
+import contactRoutes from './routes/contactRoutes.js';
+import { errorHandler } from './middleware/errorMiddleware.js';
+
+// Load environment variables
+dotenv.config();
 
 const app = express();
-
-/* ✅ CORS */
-app.use(cors({
-  origin: [
-    "http://localhost:5173",
-    "https://vishuportfolio-backend.onrender.com"
-  ],
-  methods: ["POST"]
-}));
-
-app.use(express.json());
-
-/* ✅ RESEND CONFIG */
-const resend = new Resend(process.env.RESEND_API_KEY);
-
-/* ✅ CONTACT API */
-app.post("/api/contact", async (req, res) => {
-  const { user_name, user_email, subject, message } = req.body;
-
-  if (!user_name || !user_email || !message) {
-    return res.status(400).json({ success: false, msg: "Missing fields" });
-  }
-
-  try {
-
-    await resend.emails.send({
-      from: `Portfolio Contact <<onboarding@resend.dev>`,
-      to: process.env.EMAIL_USER,
-      reply_to: user_email,
-      subject: subject || "New Contact Message",
-      html: `
-        <h2>New Contact Message</h2>
-        <p><b>Name:</b> ${user_name}</p>
-        <p><b>Email:</b> ${user_email}</p>
-        <p><b>Message:</b></p>
-        <p>${message}</p>
-      `
-    });
-
-    res.json({ success: true });
-
-  } catch (error) {
-    console.error("❌ Mail Send Error:", error);
-    res.status(500).json({ success: false });
-  }
-});
-
-/* ✅ SERVER */
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () =>
-  console.log(`🚀 Server running on http://localhost:${PORT}`)
-);
+// Security middleware
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  contentSecurityPolicy: false,
+}));
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Apply rate limiting to API routes
+app.use('/api/', limiter);
+
+// CORS configuration
+app.use(cors({
+  origin: ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:5174'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// Body parser middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Routes
+app.use('/api/contact', contactRoutes);
+
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'OK', 
+    message: 'Server is running',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({ 
+    success: false, 
+    message: 'Route not found' 
+  });
+});
+
+// Error handling middleware
+app.use(errorHandler);
+
+// Start server
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📧 Resend email service ready`);
+  console.log(`🌐 http://localhost:${PORT}`);
+});
