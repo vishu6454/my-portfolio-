@@ -4,13 +4,12 @@ import helmet from 'helmet';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
 import contactRoutes from './routes/contactRoutes.js';
-import { errorHandler } from './middleware/errorMiddleware.js';
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 10000;
 
 // Security middleware
 app.use(helmet({
@@ -20,19 +19,34 @@ app.use(helmet({
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 100,
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
 });
 
-// Apply rate limiting to API routes
 app.use('/api/', limiter);
 
-// CORS configuration
+// CORS configuration - Allow your frontend URLs
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'https://my-portfolio-tau-livid-66.vercel.app',
+  'https://my-portfolio-gelo.onrender.com'
+];
+
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:5174'],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
+      callback(null, true);
+    } else {
+      console.log('Blocked origin:', origin);
+      callback(null, true); // Allow all for now, we'll restrict later
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -50,7 +64,21 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({ 
     status: 'OK', 
     message: 'Server is running',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'production'
+  });
+});
+
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Portfolio Backend API',
+    version: '1.0.0',
+    status: 'running',
+    endpoints: {
+      health: '/api/health',
+      contact: '/api/contact'
+    }
   });
 });
 
@@ -63,11 +91,19 @@ app.use((req, res) => {
 });
 
 // Error handling middleware
-app.use(errorHandler);
+app.use((err, req, res, next) => {
+  console.error('Error:', err.message);
+  res.status(500).json({
+    success: false,
+    message: err.message || 'Internal Server Error'
+  });
+});
 
 // Start server
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📧 Resend email service ready`);
-  console.log(`🌐 http://localhost:${PORT}`);
+  console.log(`🔧 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🌐 Health check: http://localhost:${PORT}/api/health`);
 });
+
+export default app;
