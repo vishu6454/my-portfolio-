@@ -29,6 +29,11 @@ const limiter = rateLimit({
 app.use('/api/', limiter);
 
 // CORS configuration - Allow your frontend URLs
+
+app.use(cors({
+  origin: true,   // ✅ allow all origins temporarily
+  credentials: true
+}));
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',
