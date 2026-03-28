@@ -33,7 +33,7 @@ const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',
   'https://my-portfolio-tau-livid-66.vercel.app',
-  'https://my-portfolio-gelo.onrender.com'
+  'https://file-systems.onrender.com'
 ];
 
 app.use(cors({
