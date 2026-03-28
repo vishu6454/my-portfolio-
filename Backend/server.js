@@ -9,7 +9,7 @@ import contactRoutes from './routes/contactRoutes.js';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 10000;
+const PORT = process.env.PORT
 
 // Security middleware
 app.use(helmet({
